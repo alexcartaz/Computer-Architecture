@@ -13,7 +13,11 @@ cpu.run()
 
 '''
 LDI = 0b01000111
+test = 0b00010001
 
+print(test)
+'''
+'''
 dict = {
   130: 'LDI',
   131: 'b',

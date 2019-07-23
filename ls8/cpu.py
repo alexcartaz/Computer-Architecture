@@ -20,10 +20,13 @@ class CPU:
         self.operations = {
             0b10000010: 'self.op_ldi()',
             0b01000111: 'self.op_prn()',
+            0b10100000: 'self.op_alu("ADD")',
             0b10100010: 'self.op_alu("MUL")',
             0b00000001: 'self.op_hlt()',
             0b01000101: 'self.op_push()',
             0b01000110: 'self.op_pop()',
+            0b01010000: 'self.op_call()',
+            0b00010001: 'self.op_ret()',
         }
 
     def read_memory(self, address=None):
@@ -36,16 +39,18 @@ class CPU:
 
     def increment_pc(self):
         self.pc += 1
+        print(self.pc)
 
     def load(self):
         """Load a program into memory."""
-        f = open("ls8/examples/stack.ls8", "r")
+        f = open("ls8/examples/call.ls8", "r")
         for s in f:
             if s[0].isdigit():
                 s = '0b' + s[0:8]
                 self.write_memory(self.pc,(int(s,2)))
                 self.increment_pc()
         self.pc = 0
+        print(self.ram)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -92,24 +97,60 @@ class CPU:
         print(self.reg[self.read_memory()])
 
     def op_alu(self, op):
-        print('MUL')
+        print(op)
         self.increment_pc()
         reg_a = self.read_memory()
         self.increment_pc()
         reg_b = self.read_memory()
         self.alu(op,reg_a,reg_b)
 
-    def op_push(self):
+    def op_push(self, value=None):
         print('PUSH')
         #may need to add a check to make sure sp is not < pc
         self.increment_pc()
         self.sp-=1
-        self.write_memory(self.sp, self.reg[self.read_memory()])
+        if value==None:
+            value = self.reg[self.read_memory()]
+        self.write_memory(self.sp, value)
+
 
     def op_pop(self):
+        '''
+        POP register - Pop the value at the top of the stack into the given register.
+
+        Copy the value from the address pointed to by SP to the given register.
+        Increment SP.
+        '''
         print('POP')
         self.increment_pc()
         self.reg[self.read_memory()] = self.read_memory(self.sp)
+        self.write_memory(self.sp, None)
+        self.sp+=1
+
+    def op_call(self):
+        '''
+        CALL register - Calls a subroutine (function) at the address stored in the register.
+        The address of the instruction directly after CALL is pushed onto the stack. 
+        This allows us to return to where we left off when the subroutine finishes executing.
+        The PC is set to the address stored in the given register. 
+        We jump to that location in RAM and execute the first instruction in the subroutine. 
+        The PC can move forward or backwards from its current location.
+        '''
+        print('CALL')
+        self.op_push(self.pc+1)
+        self.pc = self.reg[self.read_memory()]-1
+
+
+
+    def op_ret(self):
+        '''
+        RET - Return from subroutine.
+        Pop the value from the top of the stack and store it in the PC.
+        '''
+        print('RET')
+        #self.pc-=1
+        #self.op_pop()
+        self.pc = self.read_memory(self.sp)
         self.write_memory(self.sp, None)
         self.sp+=1
 
@@ -120,6 +161,6 @@ class CPU:
 
     def op_unknown(self, op_id):
         print("Unknown command")
-        print("command: " + str(command))
+        print("command: " + str(op_id))
         sys.exit(1)
             
